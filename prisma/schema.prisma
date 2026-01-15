@@ -1,0 +1,373 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  firstName          String?
+  lastName           String?
+  isVerified         Boolean             @default(false)
+  signedIn           Boolean             @default(false)
+  urlPhoto           String?
+  cellphone          String?
+  country            String?
+  city               String?
+  idStripeCustomer   String?
+  hash               String?
+  salt               String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  userName           String              @unique
+  birthday           DateTime?
+  role               String              @default("Administrador")
+  job                String?
+  department         String?
+  type               String?
+  active             Boolean             @default(true)
+  Company            Company?
+  DeviceHistory      DeviceHistory[]
+  fileModifyBy       File[]              @relation("fileModifyBy")
+  fileOwner          File[]              @relation("fileOwner")
+  fileRemoveBy       FileBin[]
+  folderModifyBy     Folder[]            @relation("folderModifyBy")
+  folderOwner        Folder[]            @relation("folderOwner")
+  folderRemoveBy     FolderBin[]
+  groupUsers         GroupUser[]
+  reciever           Notification[]      @relation("reciever")
+  transmitter        Notification[]      @relation("transmitter")
+  quotations         Quotation[]
+  grantedAccess      QuotationAccess[]   @relation("GrantedBy")
+  quotationAccess    QuotationAccess[]
+  Setting            Setting?
+  subscriptions      SubscriptionBase[]
+  subscriptionGroups SubscriptionGroup[]
+  UserDepartment     UserDepartment[]
+  UserDevice         UserDevice[]
+  UserFile           UserFile[]
+  UserFolder         UserFolder[]
+  UserNetwork        UserNetwork?
+  userProviders      UserProvider[]
+
+  @@index([email])
+}
+
+model UserProvider {
+  id         String   @id @default(cuid())
+  userId     String
+  provider   String
+  providerId String   @unique
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, provider])
+}
+
+model Plan {
+  id            String             @id @default(cuid())
+  name          String
+  description   String
+  maxUsers      Int?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  subscriptions SubscriptionBase[]
+}
+
+model SubscriptionBase {
+  id        String             @id @default(cuid())
+  planId    String
+  startDate DateTime           @default(now())
+  endDate   DateTime?
+  status    String             @default("active")
+  type      SubscriptionType   @default(INDIVIDUAL)
+  userId    String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  plan      Plan               @relation(fields: [planId], references: [id])
+  user      User?              @relation(fields: [userId], references: [id])
+  group     SubscriptionGroup?
+
+  @@index([status])
+}
+
+model SubscriptionGroup {
+  id           String           @id @default(cuid())
+  planId       String           @unique
+  ownerId      String
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @default(now())
+  members      GroupUser[]
+  owner        User             @relation(fields: [ownerId], references: [id])
+  subscription SubscriptionBase @relation(fields: [planId], references: [id])
+}
+
+model GroupUser {
+  id        String            @id @default(cuid())
+  groupId   String
+  userId    String
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @default(now())
+  group     SubscriptionGroup @relation(fields: [groupId], references: [id])
+  user      User              @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+}
+
+model UserNetwork {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  network    String
+  connection Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  User       User     @relation(fields: [userId], references: [id])
+}
+
+model UserDevice {
+  id        String   @id @default(cuid())
+  userId    String
+  device    String
+  deviceId  String
+  active    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  User      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, deviceId])
+}
+
+model DeviceHistory {
+  id         String   @id @default(cuid())
+  userId     String
+  webBrowser String
+  device     String
+  deviceId   String
+  address    String
+  status     String   @default("Sesión actual")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  User       User     @relation(fields: [userId], references: [id])
+}
+
+model Company {
+  id                String              @id @default(cuid())
+  userId            String              @unique
+  name              String
+  companyName       String?
+  matrixDirection   String?
+  taxId             String?
+  size              String
+  country           String?
+  city              String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  User              User                @relation(fields: [userId], references: [id])
+  companyDepartment CompanyDepartment[]
+  companyProducts   CompanyProducts[]
+}
+
+model CompanyProducts {
+  id        String   @id @default(cuid())
+  companyId String
+  product   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  company   Company  @relation(fields: [companyId], references: [id])
+}
+
+model CompanyDepartment {
+  id             String           @id @default(cuid())
+  companyId      String
+  name           String
+  icon           String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @default(now())
+  company        Company          @relation(fields: [companyId], references: [id])
+  UserDepartment UserDepartment[]
+}
+
+model UserDepartment {
+  id                String            @id @default(cuid())
+  departmentId      String
+  userId            String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @default(now())
+  CompanyDepartment CompanyDepartment @relation(fields: [departmentId], references: [id])
+  User              User              @relation(fields: [userId], references: [id])
+
+  @@unique([userId, departmentId])
+}
+
+model Notification {
+  id            String   @id @default(cuid())
+  transmitterId String
+  recieverId    String
+  read          Boolean  @default(false)
+  time          DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  content       String
+  extraData     Json?
+  header        String
+  type          String
+  reciever      User     @relation("reciever", fields: [recieverId], references: [id])
+  transmitter   User     @relation("transmitter", fields: [transmitterId], references: [id])
+}
+
+model Setting {
+  id                      String   @id @default(cuid())
+  userId                  String   @unique
+  language                String   @default("español")
+  dayFormat               String   @default("8/31/2000")
+  timeFormat              String   @default("1:01 AM - 11:59 PM")
+  timeZone                String   @default("(UTC-05:00) Bogotá, Lima, Quito, Río Branco")
+  changeTimeZone          Boolean  @default(false)
+  pushNotifications       Boolean  @default(false)
+  activitiesNotifications Boolean  @default(false)
+  summaryNotifications    Boolean  @default(false)
+  news                    Boolean  @default(false)
+  bin                     Int      @default(15)
+  proyectModification     Boolean  @default(false)
+  addMembers              Boolean  @default(false)
+  export                  Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  User                    User     @relation(fields: [userId], references: [id])
+}
+
+model Folder {
+  id             String       @id @default(cuid())
+  folderId       String?
+  ownerId        String
+  modifyBy       String
+  name           String
+  isTeam         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  File           File[]
+  root           Folder?      @relation("tree", fields: [folderId], references: [id])
+  leaf           Folder[]     @relation("tree")
+  folderModifyBy User         @relation("folderModifyBy", fields: [modifyBy], references: [id])
+  folderOwner    User         @relation("folderOwner", fields: [ownerId], references: [id])
+  FolderBin      FolderBin?
+  UserFolder     UserFolder[]
+}
+
+model FolderBin {
+  id        String   @id @default(cuid())
+  folderId  String   @unique
+  removeBy  String
+  createdAt DateTime @default(now())
+  foleder   Folder   @relation(fields: [folderId], references: [id])
+  RemoveBy  User     @relation(fields: [removeBy], references: [id])
+}
+
+model UserFolder {
+  id         String   @id @default(cuid())
+  userId     String
+  folderId   String
+  accessType String   @default("edit")
+  openedAt   DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  Folder     Folder   @relation(fields: [folderId], references: [id])
+  User       User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, folderId])
+}
+
+model File {
+  id           String     @id @default(cuid())
+  folderId     String?
+  ownerId      String
+  modifyBy     String
+  projectId    String
+  name         String
+  url          String
+  type         String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  Folder       Folder?    @relation(fields: [folderId], references: [id])
+  fileModifyBy User       @relation("fileModifyBy", fields: [modifyBy], references: [id])
+  fileOwner    User       @relation("fileOwner", fields: [ownerId], references: [id])
+  FileBin      FileBin?
+  UserFile     UserFile[]
+}
+
+model FileBin {
+  id        String   @id @default(cuid())
+  fileId    String   @unique
+  removeBy  String
+  createdAt DateTime @default(now())
+  File      File     @relation(fields: [fileId], references: [id])
+  RemoveBy  User     @relation(fields: [removeBy], references: [id])
+}
+
+model UserFile {
+  id         String   @id @default(cuid())
+  userId     String
+  fileId     String
+  accessType String   @default("edit")
+  openedAt   DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  File       File     @relation(fields: [fileId], references: [id])
+  User       User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, fileId])
+}
+
+model VerificationCode {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  code      String
+  expiresAt DateTime
+}
+
+model Quotation {
+  id              String            @id @default(cuid())
+  userId          String
+  quotationData   Json
+  courseImage     String?
+  pdfUrl          String?
+  pdfFileName     String?
+  pdfPath         String?
+  pdfUploadedAt   DateTime?
+  shareToken      String?           @unique
+  isPublic        Boolean           @default(false)
+  expiresAt       DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  user            User              @relation(fields: [userId], references: [id])
+  quotationAccess QuotationAccess[]
+}
+
+model QuotationAccess {
+  id            String      @id @default(cuid())
+  quotationId   String
+  userId        String
+  accessLevel   AccessLevel @default(VIEW)
+  grantedBy     String
+  grantedAt     DateTime    @default(now())
+  grantedByUser User        @relation("GrantedBy", fields: [grantedBy], references: [id])
+  quotation     Quotation   @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id])
+
+  @@unique([quotationId, userId])
+}
+
+enum SubscriptionType {
+  INDIVIDUAL
+  ENTERPRISE
+}
+
+enum AccessLevel {
+  VIEW
+  EDIT
+  ADMIN
+}
